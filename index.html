@@ -3,15 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>מעקב הסדרות שלי</title>
+    <title>מעקב הסדרות והסרטים שלי</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- ספריה ליצירת PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Rubik', sans-serif;
             background-color: #f8fafc;
         }
-        /* אנימציות מעבר עדינות */
         .fade-in {
             animation: fadeIn 0.3s ease-in-out;
         }
@@ -19,20 +20,18 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        /* עיצוב פס הגלילה */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9; 
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1; 
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8; 
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* סגנון מיוחד להדפסה / PDF */
+        #pdfTemplate {
+            display: none;
+            background: white;
+            padding: 40px;
+            color: black;
+            direction: rtl;
         }
     </style>
 </head>
@@ -43,103 +42,148 @@
         <h3 id="modalTitle" class="text-2xl font-bold text-slate-800 mb-2">כותרת</h3>
         <p id="modalMessage" class="text-slate-600 mb-6 text-lg">הודעה</p>
         
-        <!-- אזור טקסט לעריכה -->
         <div id="modalInputContainer" class="hidden mb-6">
-            <input type="text" id="modalInput" class="w-full p-4 rounded-xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-0 outline-none text-lg transition-colors" placeholder="הקלד/י כאן...">
+            <input type="text" id="modalInput" class="w-full p-4 rounded-xl border-2 border-slate-200 focus:border-indigo-500 outline-none text-lg transition-colors" placeholder="הקלד/י כאן...">
             <p id="modalError" class="hidden text-red-500 text-sm mt-2 font-medium"></p>
         </div>
 
         <div class="flex justify-end gap-3 mt-4">
             <button id="modalCancelBtn" class="px-5 py-2.5 rounded-xl font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors hidden">ביטול</button>
-            <button id="modalConfirmBtn" class="px-5 py-2.5 rounded-xl font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-md hover:shadow-lg">אישור</button>
+            <button id="modalConfirmBtn" class="px-5 py-2.5 rounded-xl font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-md">אישור</button>
         </div>
     </div>
 </div>
 
-<div class="max-w-4xl mx-auto p-4 md:p-8">
+<div class="max-w-5xl mx-auto p-4 md:p-8">
     
     <div id="homeScreen" class="fade-in">
         <div class="text-center mb-10">
-            <h1 class="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-l from-indigo-600 to-purple-600 mb-4 tracking-tight">מעקב הסדרות שלי 📺</h1>
-            <p class="text-slate-500 text-lg">המקום שלך לתעד את כל מה שראית</p>
+            <h1 class="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-l from-indigo-600 to-purple-600 mb-4 tracking-tight">הצפיות שלי 🍿</h1>
+            <p class="text-slate-500 text-lg">המקום לתעד את כל הסדרות והסרטים שראית</p>
         </div>
 
-        <!-- כרטיסיות סטטיסטיקה -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center transform hover:-translate-y-1 transition-transform">
-                <span id="statTotal" class="text-5xl font-black text-indigo-600 mb-2">0</span>
-                <span class="text-slate-500 font-medium">סה"כ סדרות</span>
+        <!-- כרטיסיות סטטיסטיקה לחיצות -->
+        <h3 class="text-lg font-bold text-slate-700 mb-3 px-2">סטטיסטיקות (לחצי כדי לראות רשימה):</h3>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-10">
+            <div onclick="navigateToList('all')" class="cursor-pointer bg-white p-4 md:p-6 rounded-2xl shadow-sm border-2 border-transparent hover:border-indigo-200 flex flex-col items-center justify-center transform hover:-translate-y-1 transition-all">
+                <span id="statTotal" class="text-4xl font-black text-indigo-600 mb-1">0</span>
+                <span class="text-slate-500 font-medium text-sm md:text-base">סה"כ תכנים</span>
             </div>
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center transform hover:-translate-y-1 transition-transform">
-                <span id="statIsrael" class="text-5xl font-black text-emerald-500 mb-2">0</span>
-                <span class="text-slate-500 font-medium">הופק בישראל 🇮🇱</span>
+            <div onclick="navigateToList('series')" class="cursor-pointer bg-white p-4 md:p-6 rounded-2xl shadow-sm border-2 border-transparent hover:border-blue-200 flex flex-col items-center justify-center transform hover:-translate-y-1 transition-all">
+                <span id="statSeries" class="text-4xl font-black text-blue-500 mb-1">0</span>
+                <span class="text-slate-500 font-medium text-sm md:text-base">רק סדרות 📺</span>
             </div>
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center transform hover:-translate-y-1 transition-transform">
-                <span id="statAbroad" class="text-5xl font-black text-amber-500 mb-2">0</span>
-                <span class="text-slate-500 font-medium">הופק בחו"ל ✈️</span>
+            <div onclick="navigateToList('movies')" class="cursor-pointer bg-white p-4 md:p-6 rounded-2xl shadow-sm border-2 border-transparent hover:border-rose-200 flex flex-col items-center justify-center transform hover:-translate-y-1 transition-all">
+                <span id="statMovies" class="text-4xl font-black text-rose-500 mb-1">0</span>
+                <span class="text-slate-500 font-medium text-sm md:text-base">רק סרטים 🎬</span>
+            </div>
+            <div onclick="navigateToList('israel')" class="cursor-pointer bg-white p-4 md:p-6 rounded-2xl shadow-sm border-2 border-transparent hover:border-emerald-200 flex flex-col items-center justify-center transform hover:-translate-y-1 transition-all">
+                <span id="statIsrael" class="text-4xl font-black text-emerald-500 mb-1">0</span>
+                <span class="text-slate-500 font-medium text-sm md:text-base">ישראלי 🇮🇱</span>
+            </div>
+            <div onclick="navigateToList('abroad')" class="cursor-pointer bg-white p-4 md:p-6 rounded-2xl shadow-sm border-2 border-transparent hover:border-amber-200 flex flex-col items-center justify-center transform hover:-translate-y-1 transition-all">
+                <span id="statAbroad" class="text-4xl font-black text-amber-500 mb-1">0</span>
+                <span class="text-slate-500 font-medium text-sm md:text-base">מחו"ל ✈️</span>
+            </div>
+            <div onclick="navigateToList('partial')" class="cursor-pointer bg-white p-4 md:p-6 rounded-2xl shadow-sm border-2 border-transparent hover:border-purple-200 flex flex-col items-center justify-center transform hover:-translate-y-1 transition-all">
+                <span id="statPartial" class="text-4xl font-black text-purple-500 mb-1">0</span>
+                <span class="text-slate-500 font-medium text-sm md:text-base">צפייה חלקית 📱</span>
             </div>
         </div>
 
-        <!-- טופס הוספה -->
         <div class="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100 mb-8">
-            <h2 class="text-2xl font-bold text-slate-800 mb-6">הוספת סדרה חדשה</h2>
+            <h2 class="text-2xl font-bold text-slate-800 mb-6">הוספת תוכן חדש</h2>
             <form id="addForm" class="flex flex-col gap-6">
                 <div>
-                    <input type="text" id="seriesInput" class="w-full p-4 text-lg rounded-xl border-2 border-slate-200 focus:border-indigo-500 outline-none transition-colors bg-slate-50 focus:bg-white" placeholder="שם הסדרה (לדוגמה: קופה ראשית, חברים...)" required>
+                    <input type="text" id="itemName" class="w-full p-4 text-lg rounded-xl border-2 border-slate-200 focus:border-indigo-500 outline-none transition-colors bg-slate-50 focus:bg-white" placeholder="שם הסדרה או הסרט..." required>
                 </div>
                 
+                <!-- סוג: סדרה או סרט -->
+                <div class="flex flex-wrap gap-4">
+                    <label class="flex-1 relative">
+                        <input type="radio" name="type" value="series" class="peer sr-only" checked>
+                        <div class="p-3 text-center rounded-xl border-2 border-slate-200 cursor-pointer transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:text-blue-700 font-medium text-slate-600 hover:bg-slate-50">
+                            סדרה 📺
+                        </div>
+                    </label>
+                    <label class="flex-1 relative">
+                        <input type="radio" name="type" value="movie" class="peer sr-only">
+                        <div class="p-3 text-center rounded-xl border-2 border-slate-200 cursor-pointer transition-all peer-checked:border-rose-500 peer-checked:bg-rose-50 peer-checked:text-rose-700 font-medium text-slate-600 hover:bg-slate-50">
+                            סרט 🎬
+                        </div>
+                    </label>
+                </div>
+
+                <!-- מקור: ישראל או חו"ל -->
                 <div class="flex flex-wrap gap-4">
                     <label class="flex-1 relative">
                         <input type="radio" name="origin" value="israel" class="peer sr-only" checked>
-                        <div class="p-4 text-center rounded-xl border-2 border-slate-200 cursor-pointer transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-checked:text-emerald-700 font-medium text-slate-600 hover:bg-slate-50">
-                            סדרה ישראלית 🇮🇱
+                        <div class="p-3 text-center rounded-xl border-2 border-slate-200 cursor-pointer transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-checked:text-emerald-700 font-medium text-slate-600 hover:bg-slate-50">
+                            הופק בישראל 🇮🇱
                         </div>
                     </label>
                     <label class="flex-1 relative">
                         <input type="radio" name="origin" value="abroad" class="peer sr-only">
-                        <div class="p-4 text-center rounded-xl border-2 border-slate-200 cursor-pointer transition-all peer-checked:border-amber-500 peer-checked:bg-amber-50 peer-checked:text-amber-700 font-medium text-slate-600 hover:bg-slate-50">
-                            סדרה מחו"ל ✈️
+                        <div class="p-3 text-center rounded-xl border-2 border-slate-200 cursor-pointer transition-all peer-checked:border-amber-500 peer-checked:bg-amber-50 peer-checked:text-amber-700 font-medium text-slate-600 hover:bg-slate-50">
+                            הופק בחו"ל ✈️
+                        </div>
+                    </label>
+                </div>
+
+                <!-- סטטוס: מלא או חלקי -->
+                <div class="flex flex-wrap gap-4">
+                    <label class="flex-1 relative">
+                        <input type="radio" name="status" value="full" class="peer sr-only" checked>
+                        <div class="p-3 text-center rounded-xl border-2 border-slate-200 cursor-pointer transition-all peer-checked:border-indigo-500 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 font-medium text-slate-600 hover:bg-slate-50">
+                            ראיתי במלואו ✔️
+                        </div>
+                    </label>
+                    <label class="flex-1 relative">
+                        <input type="radio" name="status" value="partial" class="peer sr-only">
+                        <div class="p-3 text-center rounded-xl border-2 border-slate-200 cursor-pointer transition-all peer-checked:border-purple-500 peer-checked:bg-purple-50 peer-checked:text-purple-700 font-medium text-slate-600 hover:bg-slate-50">
+                            רק קטעים / טיקטוק 📱
                         </div>
                     </label>
                 </div>
 
                 <button type="submit" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-lg transition-colors shadow-md hover:shadow-xl flex items-center justify-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                     הוסף לרשימה
                 </button>
             </form>
         </div>
 
-        <!-- מעבר לרשימה -->
-        <button id="goToListBtn" class="w-full py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-lg transition-colors shadow-md flex items-center justify-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
-            לכל הסדרות שלי
-        </button>
+        <!-- כפתורי גיבוי ושחזור -->
+        <div class="flex justify-center gap-4 border-t border-slate-200 pt-6">
+            <button onclick="exportData()" class="text-sm px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors flex items-center gap-2">
+                💾 הורד גיבוי (קובץ)
+            </button>
+            <label class="text-sm px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors flex items-center gap-2 cursor-pointer">
+                📂 שחזר מגיבוי
+                <input type="file" id="importFile" class="hidden" accept=".json">
+            </label>
+        </div>
     </div>
 
     <div id="listScreen" class="hidden fade-in pb-20">
-        <div class="flex items-center justify-between mb-8">
-            <h2 class="text-3xl font-bold text-slate-800">הסדרות שלי</h2>
-            <button id="backToHomeBtn" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-medium transition-colors flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                חזרה להוספה
-            </button>
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+            <h2 class="text-3xl font-bold text-slate-800" id="listTitle">הרשימה שלי</h2>
+            <div class="flex gap-2 w-full sm:w-auto">
+                <button onclick="generatePDF()" class="flex-1 sm:flex-none px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg font-medium transition-colors shadow flex items-center justify-center gap-2">
+                    📄 שמור כ-PDF
+                </button>
+                <button id="backToHomeBtn" class="flex-1 sm:flex-none px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+                    חזרה 
+                </button>
+            </div>
         </div>
 
         <div class="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100">
-            <!-- סרגל כלים: סינון ומיון -->
-            <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 pb-6 border-b border-slate-100">
-                <!-- סינון -->
-                <div class="flex bg-slate-100 p-1 rounded-xl w-full md:w-auto">
-                    <button class="filter-btn flex-1 md:flex-none px-6 py-2.5 rounded-lg text-sm font-bold bg-white text-indigo-600 shadow-sm transition-all focus:outline-none" data-filter="all">הכל</button>
-                    <button class="filter-btn flex-1 md:flex-none px-6 py-2.5 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-800 transition-all focus:outline-none" data-filter="israel">ישראל 🇮🇱</button>
-                    <button class="filter-btn flex-1 md:flex-none px-6 py-2.5 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-800 transition-all focus:outline-none" data-filter="abroad">חו"ל ✈️</button>
-                </div>
-                
-                <!-- מיון -->
-                <div class="flex items-center gap-3 w-full md:w-auto bg-slate-100 p-2 rounded-xl">
-                    <span class="text-sm font-bold text-slate-500 px-2">מיון:</span>
-                    <select id="sortSelect" class="bg-white border-none text-slate-700 text-sm font-bold rounded-lg focus:ring-2 focus:ring-indigo-500 block px-4 py-2 w-full md:w-auto outline-none cursor-pointer shadow-sm">
+            <!-- מיון -->
+            <div class="flex justify-between items-center mb-6 pb-6 border-b border-slate-100">
+                <span class="text-slate-500 font-medium" id="itemCountDisplay">מציג 0 פריטים</span>
+                <div class="flex items-center gap-3 bg-slate-100 p-2 rounded-xl">
+                    <span class="text-sm font-bold text-slate-500 px-2 hidden sm:inline">מיון:</span>
+                    <select id="sortSelect" class="bg-white border-none text-slate-700 text-sm font-bold rounded-lg focus:ring-2 focus:ring-indigo-500 block px-4 py-2 outline-none cursor-pointer shadow-sm">
                         <option value="dateDesc">הכי חדש קודם</option>
                         <option value="dateAsc">הכי ישן קודם</option>
                         <option value="alpha">א-ב / A-Z</option>
@@ -151,147 +195,169 @@
             <div id="emptyState" class="hidden text-center py-16 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
                 <div class="text-5xl mb-4">🔍</div>
                 <h3 class="text-xl font-bold text-slate-700 mb-2">אין כאן כלום כרגע</h3>
-                <p class="text-slate-500">נסה/י לשנות את אפשרויות הסינון או להוסיף סדרות חדשות.</p>
+                <p class="text-slate-500">נסה/י קטגוריה אחרת או הוסיפי תכנים חדשים.</p>
             </div>
 
-            <!-- הרשימה עצמה -->
-            <ul id="seriesList" class="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+            <!-- הרשימה -->
+            <ul id="seriesList" class="space-y-3 max-h-[65vh] overflow-y-auto pr-2">
                 <!-- פריטים יתווספו לכאן -->
             </ul>
         </div>
     </div>
 </div>
 
+<!-- תבנית נסתרת ליצירת מסמך ה-PDF -->
+<div id="pdfTemplate">
+    <div style="text-align: center; border-bottom: 2px solid #6C63FF; padding-bottom: 20px; margin-bottom: 30px;">
+        <h1 style="color: #6C63FF; margin-bottom: 5px; font-size: 32px;">רשימת הצפיות של <span id="pdfName"></span></h1>
+        <p style="color: #666; font-size: 16px;">הופק ב- <span id="pdfDate"></span></p>
+    </div>
+    
+    <div style="display: flex; justify-content: space-between; margin-bottom: 30px; background: #f8fafc; padding: 15px; border-radius: 10px;">
+        <div style="text-align: center;"><strong>סה"כ:</strong> <br><span id="pdfTotal" style="font-size: 24px; color:#6C63FF">0</span></div>
+        <div style="text-align: center;"><strong>סדרות:</strong> <br><span id="pdfSeries" style="font-size: 24px; color:#3b82f6">0</span></div>
+        <div style="text-align: center;"><strong>סרטים:</strong> <br><span id="pdfMovies" style="font-size: 24px; color:#f43f5e">0</span></div>
+        <div style="text-align: center;"><strong>ישראל:</strong> <br><span id="pdfIsrael" style="font-size: 24px; color:#10b981">0</span></div>
+        <div style="text-align: center;"><strong>חו"ל:</strong> <br><span id="pdfAbroad" style="font-size: 24px; color:#f59e0b">0</span></div>
+    </div>
+
+    <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 14px;">
+        <thead>
+            <tr style="background-color: #f1f5f9;">
+                <th style="padding: 10px; border-bottom: 2px solid #cbd5e1;">שם התוכן</th>
+                <th style="padding: 10px; border-bottom: 2px solid #cbd5e1;">סוג</th>
+                <th style="padding: 10px; border-bottom: 2px solid #cbd5e1;">מקור</th>
+                <th style="padding: 10px; border-bottom: 2px solid #cbd5e1;">סטטוס</th>
+            </tr>
+        </thead>
+        <tbody id="pdfTableBody">
+            <!-- PDF rows -->
+        </tbody>
+    </table>
+</div>
+
 <script>
-    // --- משתני מדינה (State) ---
-    // לכל סדרה יש מזהה ייחודי כדי שנוכל לערוך ולמחוק בקלות גם אחרי מיון/סינון
+    // טעינת נתונים + מיגרציה חכמה לנתונים הישנים שלך (ה-106 סדרות!)
     let seriesData = JSON.parse(localStorage.getItem('mySeriesDb')) || [];
-    let currentFilter = 'all'; // 'all', 'israel', 'abroad'
-    let currentSort = 'dateDesc'; // 'dateDesc', 'dateAsc', 'alpha'
+    
+    // מוודא שלכל הנתונים הישנים יש את השדות החדשים כדי שלא יישבר כלום
+    seriesData = seriesData.map(item => ({
+        ...item,
+        type: item.type || 'series',   // ברירת מחדל: סדרה
+        status: item.status || 'full'  // ברירת מחדל: נצפה במלואו
+    }));
+    saveData();
 
-    // מיגרציה לנתונים ישנים (אם היה לך שמור מהקוד הקודם, נוסיף להם ID ותאריך)
-    const legacyData = JSON.parse(localStorage.getItem('mySeries'));
-    if (legacyData && legacyData.length > 0 && seriesData.length === 0) {
-        seriesData = legacyData.map((s, index) => ({
-            id: Date.now().toString() + index,
-            name: s.name,
-            origin: s.origin,
-            createdAt: Date.now() + index
-        }));
-        saveData();
-        localStorage.removeItem('mySeries'); // ניקוי הישן
-    }
+    let currentFilter = 'all'; 
+    let currentSort = 'dateDesc';
 
-    // אלמנטים ב-DOM
+    // אלמנטים
     const homeScreen = document.getElementById('homeScreen');
     const listScreen = document.getElementById('listScreen');
-    const goToListBtn = document.getElementById('goToListBtn');
-    const backToHomeBtn = document.getElementById('backToHomeBtn');
     const addForm = document.getElementById('addForm');
-    const seriesInput = document.getElementById('seriesInput');
     const seriesList = document.getElementById('seriesList');
-    const emptyState = document.getElementById('emptyState');
-    const filterBtns = document.querySelectorAll('.filter-btn');
-    const sortSelect = document.getElementById('sortSelect');
-
-    // אלמנטים מודאל
+    
+    // מודאל
     const modal = document.getElementById('customModal');
-    const modalContentBox = document.getElementById('modalContentBox');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalMessage = document.getElementById('modalMessage');
-    const modalInputContainer = document.getElementById('modalInputContainer');
     const modalInput = document.getElementById('modalInput');
-    const modalError = document.getElementById('modalError');
-    const modalConfirmBtn = document.getElementById('modalConfirmBtn');
-    const modalCancelBtn = document.getElementById('modalCancelBtn');
-
+    const modalInputContainer = document.getElementById('modalInputContainer');
     let modalConfirmCallback = null;
-
-    // --- פונקציות עזר ---
 
     function saveData() {
         localStorage.setItem('mySeriesDb', JSON.stringify(seriesData));
     }
 
-    // ניהול מסכים
-    goToListBtn.addEventListener('click', () => {
+    function updateHomeStats() {
+        document.getElementById('statTotal').textContent = seriesData.length;
+        document.getElementById('statSeries').textContent = seriesData.filter(s => s.type === 'series').length;
+        document.getElementById('statMovies').textContent = seriesData.filter(s => s.type === 'movie').length;
+        document.getElementById('statIsrael').textContent = seriesData.filter(s => s.origin === 'israel').length;
+        document.getElementById('statAbroad').textContent = seriesData.filter(s => s.origin === 'abroad').length;
+        document.getElementById('statPartial').textContent = seriesData.filter(s => s.status === 'partial').length;
+    }
+
+    // ניווט לכרטיסיות
+    window.navigateToList = function(filter) {
+        currentFilter = filter;
+        
+        // עדכון כותרת המסך
+        const titles = {
+            'all': 'כל הצפיות שלי',
+            'series': 'רק סדרות 📺',
+            'movies': 'רק סרטים 🎬',
+            'israel': 'הפקות מישראל 🇮🇱',
+            'abroad': 'הפקות מחו"ל ✈️',
+            'partial': 'צפייה חלקית / טיקטוק 📱'
+        };
+        document.getElementById('listTitle').textContent = titles[filter];
+        
         homeScreen.classList.add('hidden');
         listScreen.classList.remove('hidden');
         renderList();
-    });
+    }
 
-    backToHomeBtn.addEventListener('click', () => {
+    document.getElementById('backToHomeBtn').addEventListener('click', () => {
         listScreen.classList.add('hidden');
         homeScreen.classList.remove('hidden');
         updateHomeStats();
     });
 
-    // --- מערכת חלונות קופצים (Modal) ---
     function openModal(options) {
-        const { title, message, type = 'info', defaultValue = '', onConfirm } = options;
+        document.getElementById('modalTitle').textContent = options.title;
+        document.getElementById('modalMessage').textContent = options.message;
+        modalConfirmCallback = options.onConfirm;
         
-        modalTitle.textContent = title;
-        modalConfirmCallback = onConfirm;
-        modalError.classList.add('hidden');
+        document.getElementById('modalError').classList.add('hidden');
+        const confirmBtn = document.getElementById('modalConfirmBtn');
+        const cancelBtn = document.getElementById('modalCancelBtn');
 
-        // עיצוב לפי סוג
-        if (type === 'edit') {
-            modalMessage.classList.add('hidden');
+        if (options.type === 'input') {
+            document.getElementById('modalMessage').classList.add('hidden');
             modalInputContainer.classList.remove('hidden');
-            modalInput.value = defaultValue;
-            modalCancelBtn.classList.remove('hidden');
-            
-            modalConfirmBtn.textContent = 'שמירה';
-            modalConfirmBtn.className = 'px-5 py-2.5 rounded-xl font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-md';
-        } else if (type === 'confirm') {
-            modalMessage.classList.remove('hidden');
-            modalMessage.textContent = message;
+            modalInput.value = options.defaultValue || '';
+            cancelBtn.classList.remove('hidden');
+            confirmBtn.textContent = 'אישור';
+            confirmBtn.className = 'px-5 py-2.5 rounded-xl font-medium text-white bg-indigo-600 hover:bg-indigo-700 shadow-md';
+        } else if (options.type === 'confirm') {
+            document.getElementById('modalMessage').classList.remove('hidden');
             modalInputContainer.classList.add('hidden');
-            modalCancelBtn.classList.remove('hidden');
-            
-            modalConfirmBtn.textContent = 'כן, מחק';
-            modalConfirmBtn.className = 'px-5 py-2.5 rounded-xl font-medium text-white bg-red-500 hover:bg-red-600 transition-colors shadow-md';
+            cancelBtn.classList.remove('hidden');
+            confirmBtn.textContent = 'כן, בטוח/ה';
+            confirmBtn.className = 'px-5 py-2.5 rounded-xl font-medium text-white bg-red-500 hover:bg-red-600 shadow-md';
         } else {
-            // רגיל (שגיאה/מידע)
-            modalMessage.classList.remove('hidden');
-            modalMessage.textContent = message;
+            document.getElementById('modalMessage').classList.remove('hidden');
             modalInputContainer.classList.add('hidden');
-            modalCancelBtn.classList.add('hidden');
-            
-            modalConfirmBtn.textContent = 'הבנתי';
-            modalConfirmBtn.className = 'px-5 py-2.5 rounded-xl font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-md';
+            cancelBtn.classList.add('hidden');
+            confirmBtn.textContent = 'הבנתי';
+            confirmBtn.className = 'px-5 py-2.5 rounded-xl font-medium text-white bg-indigo-600 hover:bg-indigo-700 shadow-md';
         }
 
-        // הצגת מודאל באנימציה
         modal.classList.remove('hidden');
         setTimeout(() => {
             modal.classList.remove('opacity-0');
-            modalContentBox.classList.remove('scale-95');
+            document.getElementById('modalContentBox').classList.remove('scale-95');
         }, 10);
     }
 
     function closeModal() {
         modal.classList.add('opacity-0');
-        modalContentBox.classList.add('scale-95');
+        document.getElementById('modalContentBox').classList.add('scale-95');
         setTimeout(() => {
             modal.classList.add('hidden');
-            modalConfirmCallback = null;
         }, 300);
     }
 
-    modalCancelBtn.addEventListener('click', closeModal);
-    modalConfirmBtn.addEventListener('click', () => {
+    document.getElementById('modalCancelBtn').addEventListener('click', closeModal);
+    document.getElementById('modalConfirmBtn').addEventListener('click', () => {
         if (!modalInputContainer.classList.contains('hidden')) {
-            // זה מצב עריכה
-            const newVal = modalInput.value.trim();
-            if (!newVal) {
-                modalError.textContent = 'שם הסדרה לא יכול להיות ריק';
-                modalError.classList.remove('hidden');
+            const val = modalInput.value.trim();
+            if (!val && modalConfirmCallback.requireValue) {
+                document.getElementById('modalError').textContent = 'שדה חובה';
+                document.getElementById('modalError').classList.remove('hidden');
                 return;
             }
             if (modalConfirmCallback) {
-                const isValid = modalConfirmCallback(newVal);
-                if (!isValid) return; // Callback החזיר false בגלל שגיאה/כפילות
+                if (modalConfirmCallback(val) === false) return; // מונע סגירה אם יש שגיאה ב-callback
             }
         } else {
             if (modalConfirmCallback) modalConfirmCallback();
@@ -299,48 +365,44 @@
         closeModal();
     });
 
-
-    // --- פעולות מרכזיות (הוספה, עריכה, מחיקה) ---
-
-    // הוספה
     addForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const name = seriesInput.value.trim();
+        const name = document.getElementById('itemName').value.trim();
+        const type = document.querySelector('input[name="type"]:checked').value;
         const origin = document.querySelector('input[name="origin"]:checked').value;
+        const status = document.querySelector('input[name="status"]:checked').value;
 
-        // בדיקת כפילות
-        const exists = seriesData.some(s => s.name.toLowerCase() === name.toLowerCase());
+        // מניעת כפילויות חכמה (בודקת רק אם זה אותו שם ואותו סוג)
+        const exists = seriesData.some(s => s.name.toLowerCase() === name.toLowerCase() && s.type === type);
         if (exists) {
             openModal({
                 title: 'אופס!',
-                message: `הסדרה "${name}" כבר קיימת ברשימה שלך. אפשר להוסיף אותה בשפה אחרת אם מדובר בסדרה שונה.`,
+                message: `התוכן "${name}" כבר קיים ברשימה שלך. אפשר להוסיף אותו בשפה אחרת אם מדובר בתוכן שונה.`,
                 type: 'info'
             });
             return;
         }
 
-        // שמירה
         seriesData.push({
             id: Date.now().toString(),
             name: name,
+            type: type,
             origin: origin,
+            status: status,
             createdAt: Date.now()
         });
         saveData();
         
-        seriesInput.value = ''; // איפוס
+        document.getElementById('itemName').value = '';
         updateHomeStats();
-        // הערה: ביטלנו את הקופץ של "נוסף בהצלחה" כבקשתך. זה רק יעדכן את המספרים.
     });
 
-    // מחיקה
-    window.deleteSeries = function(id) {
+    window.deleteItem = function(id) {
         const item = seriesData.find(s => s.id === id);
         if(!item) return;
-
         openModal({
-            title: 'מחיקת סדרה',
-            message: `בטוחה שאת רוצה למחוק את "${item.name}" מהרשימה?`,
+            title: 'מחיקה',
+            message: `למחוק את "${item.name}" מהרשימה?`,
             type: 'confirm',
             onConfirm: () => {
                 seriesData = seriesData.filter(s => s.id !== id);
@@ -351,60 +413,31 @@
         });
     }
 
-    // עריכה
-    window.editSeries = function(id) {
+    window.editItem = function(id) {
         const itemIndex = seriesData.findIndex(s => s.id === id);
         if(itemIndex === -1) return;
         
-        const currentName = seriesData[itemIndex].name;
-
         openModal({
-            title: 'עריכת שם הסדרה',
-            type: 'edit',
-            defaultValue: currentName,
+            title: 'עריכת שם',
+            type: 'input',
+            defaultValue: seriesData[itemIndex].name,
             onConfirm: (newName) => {
-                // בדיקת כפילות מתעלמת מהסדרה הנוכחית
-                const exists = seriesData.some((s, idx) => idx !== itemIndex && s.name.toLowerCase() === newName.toLowerCase());
+                const exists = seriesData.some((s, idx) => idx !== itemIndex && s.name.toLowerCase() === newName.toLowerCase() && s.type === seriesData[itemIndex].type);
                 if (exists) {
-                    modalError.textContent = `השם "${newName}" כבר קיים ברשימה.`;
-                    modalError.classList.remove('hidden');
-                    return false; // מונע סגירה
+                    document.getElementById('modalError').textContent = `כבר קיים ברשימה!`;
+                    document.getElementById('modalError').classList.remove('hidden');
+                    return false; 
                 }
-                
                 seriesData[itemIndex].name = newName;
                 saveData();
                 renderList();
-                return true; // מאשר סגירה
+                return true;
             }
         });
+        modalConfirmCallback.requireValue = true;
     }
 
-    // --- רינדור ותצוגה ---
-
-    function updateHomeStats() {
-        document.getElementById('statTotal').textContent = seriesData.length;
-        document.getElementById('statIsrael').textContent = seriesData.filter(s => s.origin === 'israel').length;
-        document.getElementById('statAbroad').textContent = seriesData.filter(s => s.origin === 'abroad').length;
-    }
-
-    // מאזינים לסינון ומיון
-    filterBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            // עדכון עיצוב כפתורים
-            filterBtns.forEach(b => {
-                b.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm');
-                b.classList.add('text-slate-500');
-            });
-            const target = e.target;
-            target.classList.remove('text-slate-500');
-            target.classList.add('bg-white', 'text-indigo-600', 'shadow-sm');
-
-            currentFilter = target.dataset.filter;
-            renderList();
-        });
-    });
-
-    sortSelect.addEventListener('change', (e) => {
+    document.getElementById('sortSelect').addEventListener('change', (e) => {
         currentSort = e.target.value;
         renderList();
     });
@@ -412,46 +445,62 @@
     function renderList() {
         seriesList.innerHTML = '';
         
-        // שלב 1: סינון
+        // סינון חכם לפי הלחצן שנבחר
         let filtered = seriesData.filter(s => {
             if (currentFilter === 'all') return true;
-            return s.origin === currentFilter;
+            if (currentFilter === 'series' || currentFilter === 'movies') return s.type === (currentFilter === 'series' ? 'series' : 'movie');
+            if (currentFilter === 'israel' || currentFilter === 'abroad') return s.origin === currentFilter;
+            if (currentFilter === 'partial') return s.status === 'partial';
+            return true;
         });
 
-        // שלב 2: מיון
+        // מיון
         filtered.sort((a, b) => {
-            if (currentSort === 'dateDesc') return b.createdAt - a.createdAt; // חדש קודם
-            if (currentSort === 'dateAsc') return a.createdAt - b.createdAt; // ישן קודם
-            if (currentSort === 'alpha') return a.name.localeCompare(b.name, 'he', { sensitivity: 'base' }); // א-ב
+            if (currentSort === 'dateDesc') return b.createdAt - a.createdAt;
+            if (currentSort === 'dateAsc') return a.createdAt - b.createdAt;
+            if (currentSort === 'alpha') return a.name.localeCompare(b.name, 'he', { sensitivity: 'base' });
             return 0;
         });
 
-        // שלב 3: ציור למסך
+        document.getElementById('itemCountDisplay').textContent = `מציג ${filtered.length} פריטים`;
+
         if (filtered.length === 0) {
-            emptyState.classList.remove('hidden');
+            document.getElementById('emptyState').classList.remove('hidden');
         } else {
-            emptyState.classList.add('hidden');
+            document.getElementById('emptyState').classList.add('hidden');
             
-            filtered.forEach(series => {
-                const isIsrael = series.origin === 'israel';
-                const borderColor = isIsrael ? 'border-r-emerald-500' : 'border-r-amber-500';
-                const badgeStyle = isIsrael ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200';
-                const badgeText = isIsrael ? 'ישראל 🇮🇱' : 'חו"ל ✈️';
+            filtered.forEach(item => {
+                const isIsrael = item.origin === 'israel';
+                const isSeries = item.type === 'series';
+                const isPartial = item.status === 'partial';
+
+                const borderCol = isIsrael ? 'border-r-emerald-500' : 'border-r-amber-500';
+                
+                // יצירת תגיות
+                const typeIcon = isSeries ? '📺 סדרה' : '🎬 סרט';
+                const originIcon = isIsrael ? '🇮🇱 ישראל' : '✈️ חו"ל';
+                const statusTag = isPartial ? `<span class="px-2 py-1 text-[10px] font-bold rounded bg-purple-100 text-purple-700">📱 צפייה חלקית</span>` : '';
 
                 const li = document.createElement('li');
-                li.className = `flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 md:p-5 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow border-r-4 ${borderColor}`;
+                li.className = `flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow border-r-4 ${borderCol}`;
                 
                 li.innerHTML = `
-                    <div class="flex items-center gap-4 overflow-hidden">
-                        <h4 class="text-xl font-bold text-slate-800 break-words">${series.name}</h4>
-                        <span class="px-3 py-1 text-xs font-bold rounded-full border whitespace-nowrap ${badgeStyle}">${badgeText}</span>
+                    <div class="flex flex-col gap-1 overflow-hidden">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h4 class="text-xl font-bold text-slate-800 break-words">${item.name}</h4>
+                            ${statusTag}
+                        </div>
+                        <div class="flex gap-2 mt-1">
+                            <span class="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">${typeIcon}</span>
+                            <span class="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">${originIcon}</span>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-2 self-end sm:self-auto">
-                        <button onclick="editSeries('${series.id}')" class="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-200" title="ערוך סדרה">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    <div class="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                        <button onclick="editItem('${item.id}')" class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors">
+                            ✏️
                         </button>
-                        <button onclick="deleteSeries('${series.id}')" class="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-red-200" title="מחק סדרה">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <button onclick="deleteItem('${item.id}')" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors">
+                            🗑️
                         </button>
                     </div>
                 `;
@@ -460,7 +509,108 @@
         }
     }
 
-    // אתחול בעת טעינה
+    function exportData() {
+        const dataStr = JSON.stringify(seriesData);
+        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        const exportFileDefaultName = `my_watch_list_backup_${new Date().toISOString().split('T')[0]}.json`;
+
+        let linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        linkElement.click();
+    }
+
+    document.getElementById('importFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                if (Array.isArray(importedData)) {
+                    // מיזוג: נוסיף רק מה שלא קיים כבר (לפי ID)
+                    let added = 0;
+                    importedData.forEach(item => {
+                        if (!seriesData.find(s => s.id === item.id)) {
+                            seriesData.push(item);
+                            added++;
+                        }
+                    });
+                    saveData();
+                    updateHomeStats();
+                    openModal({ title: 'השחזור הושלם!', message: `שוחזרו ${added} פריטים חדשים מהגיבוי.`, type: 'info' });
+                }
+            } catch (err) {
+                openModal({ title: 'שגיאה', message: 'קובץ הגיבוי לא תקין.', type: 'info' });
+            }
+            document.getElementById('importFile').value = ''; // איפוס 
+        };
+        reader.readAsText(file);
+    });
+
+    function generatePDF() {
+        // בקשת השם מהמשתמש למסמך
+        openModal({
+            title: 'יצירת מסמך PDF',
+            message: 'איך קוראים לך? (יופיע בכותרת המסמך)',
+            type: 'input',
+            onConfirm: (name) => {
+                createPDFFile(name || 'אורח');
+            }
+        });
+    }
+
+    function createPDFFile(userName) {
+        // 1. אכלוס התבנית הנסתרת בנתונים
+        document.getElementById('pdfName').textContent = userName;
+        document.getElementById('pdfDate').textContent = new Date().toLocaleDateString('he-IL');
+        
+        document.getElementById('pdfTotal').textContent = seriesData.length;
+        document.getElementById('pdfSeries').textContent = seriesData.filter(s => s.type === 'series').length;
+        document.getElementById('pdfMovies').textContent = seriesData.filter(s => s.type === 'movie').length;
+        document.getElementById('pdfIsrael').textContent = seriesData.filter(s => s.origin === 'israel').length;
+        document.getElementById('pdfAbroad').textContent = seriesData.filter(s => s.origin === 'abroad').length;
+
+        const tbody = document.getElementById('pdfTableBody');
+        tbody.innerHTML = ''; // ניקוי ישן
+
+        // מיון אלפביתי כברירת מחדל ל-PDF
+        const sortedData = [...seriesData].sort((a, b) => a.name.localeCompare(b.name, 'he'));
+
+        sortedData.forEach(item => {
+            const tr = document.createElement('tr');
+            const statusText = item.status === 'full' ? 'נצפה מלא' : 'חלק / קטעים';
+            const typeText = item.type === 'series' ? 'סדרה' : 'סרט';
+            const originText = item.origin === 'israel' ? 'ישראל' : 'חו"ל';
+
+            tr.innerHTML = `
+                <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-weight: bold;">${item.name}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${typeText}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${originText}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; color: #64748b;">${statusText}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // 2. הפעלת ספרית html2pdf
+        const element = document.getElementById('pdfTemplate');
+        element.style.display = 'block'; // הצגה רגעית מאחורי הקלעים
+
+        const opt = {
+            margin:       10,
+            filename:     `רשימת_צפיות_${userName}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            element.style.display = 'none'; // הסתרה בחזרה
+        });
+    }
+
+    // אתחול המסך הראשון
     updateHomeStats();
 </script>
 
