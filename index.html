@@ -246,6 +246,17 @@
         type: item.type || 'series',   // ברירת מחדל: סדרה
         status: item.status || 'full'  // ברירת מחדל: נצפה במלואו
     }));
+    // בדיקה והוספה אוטומטית של השמיניה במידה ואינה קיימת עדיין
+    if (!seriesData.some(s => s.name === 'השמיניה')) {
+        seriesData.push({
+            id: '1785536470844',
+            name: 'השמיניה',
+            type: 'series',
+            origin: 'israel',
+            status: 'full',
+            createdAt: 1785536470844
+        });
+    }
     saveData();
 
     let currentFilter = 'all'; 
